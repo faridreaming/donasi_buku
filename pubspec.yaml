@@ -10,40 +10,24 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase
   firebase_core: ^2.30.1
   firebase_auth: ^4.19.6
   cloud_firestore: ^4.17.5
   firebase_messaging: ^14.9.4
 
-  # Auth
-  google_sign_in: ^6.2.1
-
-  # Environment
   flutter_dotenv: ^5.1.0
-
-  # Networking (Cloudinary)
   http: ^1.2.1
-
-  # Image
   image_picker: ^1.1.2
   cached_network_image: ^3.3.1
-
-  # Navigation
   go_router: ^13.2.1
-
-  # State Management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
-
-  # UI / Fonts
   google_fonts: ^6.2.1
-
-  # Utilities
   intl: ^0.19.0
   uuid: ^4.4.0
   timeago: ^3.7.0
   shared_preferences: ^2.2.3
+  phosphor_flutter: ^2.1.0
 
 dev_dependencies:
   flutter_test:
