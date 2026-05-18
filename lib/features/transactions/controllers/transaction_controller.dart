@@ -20,7 +20,9 @@ final myDonatedBooksProvider = StreamProvider((ref) {
 });
 
 /// Semua permintaan yang masuk ke buku saya
-// Ganti incomingRequestsProvider:
+/// Permintaan yang masuk ke buku milik saya.
+/// Pakai single .where() → tidak butuh composite index.
+/// Filter bookId dan status dilakukan client-side.
 final incomingRequestsProvider =
     StreamProvider.family<List<TransactionModel>, String>((ref, bookId) {
   final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -28,13 +30,12 @@ final incomingRequestsProvider =
 
   return FirebaseFirestore.instance
       .collection('transactions')
-      .where('donorId', isEqualTo: uid) // ← filter by uid agar rules terpenuhi
-      .where('bookId', isEqualTo: bookId)
-      .orderBy('createdAt', descending: true)
+      .where('donorId', isEqualTo: uid) // single field = tidak perlu index
       .snapshots()
-      .map((s) => s.docs
+      .map((snap) => snap.docs
           .map(TransactionModel.fromFirestore)
           .where((t) =>
+              t.bookId == bookId && // filter client-side
               t.status == TransactionStatus.pending) // filter client-side
           .toList());
 });
