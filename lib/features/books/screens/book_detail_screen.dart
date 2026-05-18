@@ -77,6 +77,7 @@ class _BookDetailView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     final currentUid = FirebaseAuth.instance.currentUser?.uid;
     final isOwner = currentUid == book.donorId;
     final donorAsync = ref.watch(_donorProvider(book.donorId));
@@ -141,6 +142,7 @@ class _BookDetailView extends ConsumerWidget {
         children: [
           // ── Scrollable content ───────────────────────────────
           SingleChildScrollView(
+            padding: EdgeInsets.only(bottom: bottomInset + 88),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -351,9 +353,6 @@ class _BookDetailView extends ConsumerWidget {
                         : _DonorCard(donor: donor),
                   ),
                 ),
-
-                // Extra space for sticky button (issue 5)
-                const SizedBox(height: 120),
               ],
             ),
           ),
@@ -364,34 +363,37 @@ class _BookDetailView extends ConsumerWidget {
               bottom: 0,
               left: 0,
               right: 0,
-              child: SafeArea(
-                // ← fix: tidak terhalang nav bar Android
-                top: false,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
-                    border: Border(
-                      top: BorderSide(color: AppColors.black, width: 2.5),
-                    ),
+              child: Container(
+                // Dekorasi warna putih sekarang membungkus sampai ke ujung layar paling bawah
+                decoration: const BoxDecoration(
+                  color: AppColors.white,
+                  border: Border(
+                    top: BorderSide(color: AppColors.black, width: 2.5),
                   ),
-                  child: activeReqAsync.when(
-                    loading: () => const SizedBox(
-                      height: 48,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.black,
+                ),
+                // SafeArea ditaruh di dalam agar memotong PADDING kontennya saja, bukan background-nya
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: activeReqAsync.when(
+                      loading: () => const SizedBox(
+                        height: 48,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.black,
+                          ),
                         ),
                       ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (existing) => existing != null
+                          ? _StatusBanner(status: existing.status)
+                          : NeoButton(
+                              label: 'Minta Buku Ini',
+                              onPressed: () => _showRequestSheet(context, book),
+                            ),
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
-                    data: (existing) => existing != null
-                        ? _StatusBanner(status: existing.status)
-                        : NeoButton(
-                            label: 'Minta Buku Ini',
-                            onPressed: () => _showRequestSheet(context, book),
-                          ),
                   ),
                 ),
               ),
@@ -525,10 +527,13 @@ class _RequestSheetState extends ConsumerState<_RequestSheet> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(transactionControllerProvider).isLoading;
+    final mediaQuery = MediaQuery.of(context);
 
-    return Padding(
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: mediaQuery.viewInsets.bottom + mediaQuery.padding.bottom,
       ),
       child: Container(
         margin: const EdgeInsets.all(16),
@@ -606,69 +611,74 @@ class _IncomingRequestsSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final requestsAsync = ref.watch(incomingRequestsProvider(bookId));
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.75,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        border: Border.all(color: AppColors.black, width: 2.5),
-        boxShadow: const [AppColors.neoShadow],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: AppColors.black,
-            child: Text(
-              'Permintaan Masuk',
-              style: AppTextStyles.heading2.copyWith(color: AppColors.primary),
-            ),
-          ),
-          Flexible(
-            child: requestsAsync.when(
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.black),
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          border: Border.all(color: AppColors.black, width: 2.5),
+          boxShadow: const [AppColors.neoShadow],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              color: AppColors.black,
+              child: Text(
+                'Permintaan Masuk',
+                style:
+                    AppTextStyles.heading2.copyWith(color: AppColors.primary),
               ),
-              error: (e, _) => Center(child: Text(e.toString())),
-              data: (requests) => requests.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          PhosphorIcon(
-                            PhosphorIcons.tray(),
-                            size: 40,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Belum ada permintaan.',
-                            style: AppTextStyles.body.copyWith(
+            ),
+            Flexible(
+              child: requestsAsync.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.black),
+                ),
+                error: (e, _) => Center(child: Text(e.toString())),
+                data: (requests) => requests.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIcons.tray(),
+                              size: 40,
                               color: AppColors.textMuted,
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 12),
+                            Text(
+                              'Belum ada permintaan.',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(16),
+                        shrinkWrap: true,
+                        itemCount: requests.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) => _RequestCard(
+                          tx: requests[i],
+                          book: book,
+                        ),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      shrinkWrap: true,
-                      itemCount: requests.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _RequestCard(
-                        tx: requests[i],
-                        book: book,
-                      ),
-                    ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
