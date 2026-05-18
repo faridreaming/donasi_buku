@@ -19,7 +19,7 @@ class DonasiBukuApp extends ConsumerWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
         // Space Grotesk sebagai font global
-        textTheme: GoogleFonts.spaceGroteskTextTheme(
+        textTheme: GoogleFonts.jetBrainsMonoTextTheme(
           ThemeData.light().textTheme,
         ),
       ),

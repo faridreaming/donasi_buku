@@ -1,201 +1,247 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../books/models/book_model.dart';
 
-class BookCard extends StatelessWidget {
+class BookCard extends StatefulWidget {
   final BookModel book;
   final VoidCallback onTap;
 
   const BookCard({super.key, required this.book, required this.onTap});
 
-  Color _conditionColor() => switch (book.condition) {
+  @override
+  State<BookCard> createState() => _BookCardState();
+}
+
+class _BookCardState extends State<BookCard> {
+  bool _pressed = false;
+
+  Color get _conditionColor => switch (widget.book.condition) {
         BookCondition.likeNew => const Color(0xFF4ECDC4),
-        BookCondition.good => const Color(0xFFFFE234),
+        BookCondition.good => const Color(0xFF7BC67E),
         BookCondition.fair => const Color(0xFFFFB347),
         BookCondition.poor => const Color(0xFFFF6B6B),
       };
 
   @override
   Widget build(BuildContext context) {
+    final book = widget.book;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: const BoxDecoration(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        height: 130, // ← tinggi tetap, tidak ikut gambar
+        margin: const EdgeInsets.only(bottom: 14),
+        transform:
+            _pressed ? Matrix4.translationValues(3, 3, 0) : Matrix4.identity(),
+        decoration: BoxDecoration(
           color: AppColors.white,
-          border: Border.fromBorderSide(
-            BorderSide(color: AppColors.black, width: 2.5),
-          ),
-          boxShadow: [AppColors.neoShadow],
+          border: Border.all(color: AppColors.black, width: 2.5),
+          boxShadow: _pressed ? null : const [AppColors.neoShadow],
         ),
-        child: IntrinsicHeight(
-          // ← baru
-          child: Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.stretch, // ← stretch agar kolom sama tinggi
-            children: [
-              // ── Photo ────────────────────────────────────────
-              SizedBox(
-                width: 96,
-                child: book.imageUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: book.imageUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: AppColors.background,
-                          child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Condition strip ────────────────────────────────
+            Container(width: 5, color: _conditionColor),
+
+            // ── Book cover (fixed size, clip overflow) ─────────
+            SizedBox(
+              width: 100,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  book.imageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: book.imageUrl,
+                          fit: BoxFit.cover, // cover menjaga proporsi dalam box
+                          placeholder: (_, __) => const _CoverPlaceholder(),
+                          errorWidget: (_, __, ___) =>
+                              const _CoverPlaceholder(),
+                        )
+                      : const _CoverPlaceholder(),
+
+                  // GRATIS badge
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      color: AppColors.primary,
+                      child: Text(
+                        'GRATIS',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Content ────────────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Category + Condition
+                    Row(
+                      children: [
+                        _Chip(label: book.category, bg: AppColors.infoSurface),
+                        const SizedBox(width: 5),
+                        _Chip(
+                          label: AppConstants
+                              .conditionLabels[book.condition.name]!,
+                          bg: _conditionColor.withValues(alpha: 0.2),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Title
+                    Text(
+                      book.title,
+                      style: AppTextStyles.bodyBold.copyWith(fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    // Author
+                    Text(
+                      book.author,
+                      style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const Spacer(),
+
+                    // Donor info  ← issue 4
+                    Row(
+                      children: [
+                        PhosphorIcon(
+                          PhosphorIcons.userCircle(PhosphorIconsStyle.fill),
+                          size: 12,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            book.donorName.isNotEmpty
+                                ? book.donorName
+                                : 'Anonim',
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        errorWidget: (_, __, ___) => const _ImagePlaceholder(),
-                      )
-                    : const _ImagePlaceholder(),
-              ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
 
-              // ── Info ─────────────────────────────────────────
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Baris badge: category + condition
+                    // Location
+                    if (book.donorLocation.isNotEmpty)
                       Row(
                         children: [
-                          _Badge(
-                            label: book.category,
-                            color: AppColors.info,
+                          PhosphorIcon(
+                            PhosphorIcons.mapPin(PhosphorIconsStyle.fill),
+                            size: 11,
+                            color: AppColors.textMuted,
                           ),
-                          const SizedBox(width: 6),
-                          _Badge(
-                            label: AppConstants
-                                .conditionLabels[book.condition.name]!,
-                            color: _conditionColor(),
-                            fontWeight: FontWeight.w700,
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              book.donorLocation,
+                              style:
+                                  AppTextStyles.caption.copyWith(fontSize: 10),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-
-                      // Judul
-                      Text(
-                        book.title,
-                        style: AppTextStyles.bodyBold,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-
-                      // Penulis
-                      Text(
-                        book.author,
-                        style: AppTextStyles.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Lokasi
-                      if (book.donorLocation.isNotEmpty)
-                        Row(
-                          children: [
-                            PhosphorIcon(
-                              PhosphorIcons.mapPin(),
-                              size: 12,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                book.donorLocation,
-                                style: AppTextStyles.caption
-                                    .copyWith(fontSize: 11),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
+            ),
 
-              // ── Arrow ─────────────────────────────────────────
-              Container(
-                width: 38,
-                decoration: BoxDecoration(
-                  border: Border(
-                    left: BorderSide(
-                      color: AppColors.black.withValues(alpha: 0.12),
-                      width: 1,
-                    ),
-                  ),
+            // ── Arrow ──────────────────────────────────────────
+            Container(
+              width: 30,
+              decoration: const BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Color(0xFFE8E8E8)),
                 ),
-                alignment: Alignment.center,
+              ),
+              child: Center(
                 child: PhosphorIcon(
-                  PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
-                  size: 18,
+                  PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+                  size: 14,
                   color: AppColors.black,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Badge helper ─────────────────────────────────────────────────────────────
-class _Badge extends StatelessWidget {
+class _Chip extends StatelessWidget {
   final String label;
-  final Color color;
-  final FontWeight fontWeight;
+  final Color bg;
 
-  const _Badge({
-    required this.label,
-    required this.color,
-    this.fontWeight = FontWeight.w600,
-  });
+  const _Chip({required this.label, required this.bg});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color,
+        color: bg,
         border: Border.all(color: AppColors.black, width: 1.5),
       ),
       child: Text(
         label,
         style: AppTextStyles.caption.copyWith(
-          fontSize: 10,
-          fontWeight: fontWeight,
-          color: AppColors.black,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
   }
 }
 
-// ── Image placeholder ─────────────────────────────────────────────────────────
-class _ImagePlaceholder extends StatelessWidget {
-  const _ImagePlaceholder();
+class _CoverPlaceholder extends StatelessWidget {
+  const _CoverPlaceholder();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.background,
+      color: const Color(0xFFF0ECE6),
       child: Center(
         child: PhosphorIcon(
-          PhosphorIcons.book(),
-          size: 32,
+          PhosphorIcons.bookOpen(),
+          size: 28,
           color: AppColors.textMuted,
         ),
       ),

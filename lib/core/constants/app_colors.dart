@@ -12,6 +12,12 @@ abstract class AppColors {
   static const textPrimary = Color(0xFF111111);
   static const textMuted = Color(0xFF666666);
 
+  // Opaque surface variants — pakai ini, jangan withValues(alpha:)
+  static const dangerSurface = Color(0xFFFFE8E8);
+  static const successSurface = Color(0xFFE3F9F0);
+  static const infoSurface = Color(0xFFE8F4FF);
+  static const warnSurface = Color(0xFFFFF3CD);
+
   static const neoShadow = BoxShadow(
     color: Color(0xFF111111),
     offset: Offset(3, 3),

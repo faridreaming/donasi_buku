@@ -25,15 +25,25 @@ class BookController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final user = FirebaseAuth.instance.currentUser!;
 
-      // 1. Upload foto ke Cloudinary
+      // Ambil nama donatur dari Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final donorName = (userDoc.data()?['name'] as String?)?.trim() ??
+          user.displayName?.trim() ??
+          'Anonim';
+
+      // Upload foto ke Cloudinary
       final upload = await CloudinaryService.uploadImage(imageFile);
       if (upload == null) throw Exception('Gagal mengupload foto buku.');
 
-      // 2. Simpan ke Firestore
+      // Simpan ke Firestore
       await FirebaseFirestore.instance.collection('books').add({
-        'donorId': uid,
+        'donorId': user.uid,
+        'donorName': donorName, // ← simpan nama
         'title': title.trim(),
         'author': author.trim(),
         'category': category,

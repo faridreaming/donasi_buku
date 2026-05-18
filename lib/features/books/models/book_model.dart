@@ -7,6 +7,7 @@ enum BookStatus { available, reserved, donated }
 class BookModel {
   final String id;
   final String donorId;
+  final String donorName; // ← tambah
   final String title;
   final String author;
   final String category;
@@ -15,7 +16,7 @@ class BookModel {
   final String imageUrl;
   final String cloudinaryPublicId;
   final BookStatus status;
-  final String donorLocation; // alamat teks (hasil reverse geocode)
+  final String donorLocation;
   final double? latitude;
   final double? longitude;
   final DateTime createdAt;
@@ -23,6 +24,7 @@ class BookModel {
   const BookModel({
     required this.id,
     required this.donorId,
+    required this.donorName,
     required this.title,
     required this.author,
     required this.category,
@@ -44,6 +46,7 @@ class BookModel {
     return BookModel(
       id: doc.id,
       donorId: d['donorId'] ?? '',
+      donorName: d['donorName'] ?? '',
       title: d['title'] ?? '',
       author: d['author'] ?? '',
       category: d['category'] ?? '',
@@ -61,6 +64,7 @@ class BookModel {
 
   Map<String, dynamic> toFirestore() => {
         'donorId': donorId,
+        'donorName': donorName,
         'title': title,
         'author': author,
         'category': category,
