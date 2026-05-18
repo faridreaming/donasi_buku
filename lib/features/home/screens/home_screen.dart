@@ -1,3 +1,4 @@
+import 'package:donasi_buku/features/notifications/controllers/notification_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -80,23 +81,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                         ),
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: AppColors.white,
-                            border: Border.fromBorderSide(
-                              BorderSide(color: AppColors.black, width: 2),
-                            ),
-                          ),
-                          child: IconButton(
-                            icon: PhosphorIcon(
-                              PhosphorIcons.bell(),
-                              size: 20,
-                              color: AppColors.black,
-                            ),
-                            onPressed: () {},
-                            padding: const EdgeInsets.all(8),
-                            constraints: const BoxConstraints(),
-                          ),
+                        Consumer(
+                          builder: (_, ref, __) {
+                            final count = ref.watch(unreadCountProvider);
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.white,
+                                    border: Border.fromBorderSide(
+                                      BorderSide(
+                                          color: AppColors.black, width: 2),
+                                    ),
+                                  ),
+                                  child: IconButton(
+                                    icon: PhosphorIcon(PhosphorIcons.bell(),
+                                        size: 20),
+                                    onPressed: () =>
+                                        context.push('/notifications'),
+                                    padding: const EdgeInsets.all(8),
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                ),
+                                if (count > 0)
+                                  Positioned(
+                                    top: -4,
+                                    right: -4,
+                                    child: Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.danger,
+                                        border: Border.all(
+                                            color: AppColors.black, width: 1.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          count > 9 ? '9+' : '$count',
+                                          style: const TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),

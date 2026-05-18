@@ -134,10 +134,7 @@ class _DonatedTab extends ConsumerWidget {
         if (querySnap is! QuerySnapshot) {
           return const Center(child: Text('Format data tidak sesuai.'));
         }
-        final books = (querySnap as QuerySnapshot)
-            .docs
-            .map(BookModel.fromFirestore)
-            .toList();
+        final books = (querySnap).docs.map(BookModel.fromFirestore).toList();
 
         if (books.isEmpty) {
           return _EmptyState(
@@ -424,8 +421,7 @@ class _CompactRequestTile extends ConsumerWidget {
                           if (!ok) return;
                           ref
                               .read(transactionControllerProvider.notifier)
-                              .updateStatus(tx.id, TransactionStatus.rejected,
-                                  bookId: book.id);
+                              .updateStatus(tx, TransactionStatus.rejected);
                         },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -463,8 +459,7 @@ class _CompactRequestTile extends ConsumerWidget {
                           if (!ok) return;
                           ref
                               .read(transactionControllerProvider.notifier)
-                              .updateStatus(tx.id, TransactionStatus.approved,
-                                  bookId: book.id);
+                              .updateStatus(tx, TransactionStatus.approved);
                         },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -632,12 +627,7 @@ class _MyRequestCard extends StatelessWidget {
                 backgroundColor: AppColors.success,
                 onPressed: () => ref
                     .read(transactionControllerProvider.notifier)
-                    .markCompleted(
-                      tx.id,
-                      tx.bookId,
-                      tx.donorId,
-                      tx.receiverId,
-                    ),
+                    .markCompleted(tx),
               ),
             ),
         ],

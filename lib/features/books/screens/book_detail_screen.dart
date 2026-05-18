@@ -755,9 +755,8 @@ class _RequestCard extends ConsumerWidget {
                     await ref
                         .read(transactionControllerProvider.notifier)
                         .updateStatus(
-                          tx.id,
+                          tx,
                           TransactionStatus.rejected,
-                          bookId: book.id,
                         );
                     if (context.mounted) Navigator.pop(context);
                   },
@@ -774,9 +773,8 @@ class _RequestCard extends ConsumerWidget {
                     await ref
                         .read(transactionControllerProvider.notifier)
                         .updateStatus(
-                          tx.id,
+                          tx,
                           TransactionStatus.approved,
-                          bookId: book.id,
                         );
                     if (context.mounted) Navigator.pop(context);
                   },

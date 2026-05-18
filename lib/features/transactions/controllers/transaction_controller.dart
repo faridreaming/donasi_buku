@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../notifications/controllers/notification_controller.dart';
+import '../../notifications/models/notification_model.dart';
 import '../models/transaction_model.dart';
 
 // ── Providers ──────────────────────────────────────────────────────────────
 
-/// Buku yang saya donasikan
 final myDonatedBooksProvider = StreamProvider((ref) {
   final uid = FirebaseAuth.instance.currentUser?.uid;
   if (uid == null) return const Stream.empty();
@@ -19,10 +20,6 @@ final myDonatedBooksProvider = StreamProvider((ref) {
       .snapshots();
 });
 
-/// Semua permintaan yang masuk ke buku saya
-/// Permintaan yang masuk ke buku milik saya.
-/// Pakai single .where() → tidak butuh composite index.
-/// Filter bookId dan status dilakukan client-side.
 final incomingRequestsProvider =
     StreamProvider.family<List<TransactionModel>, String>((ref, bookId) {
   final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -30,17 +27,15 @@ final incomingRequestsProvider =
 
   return FirebaseFirestore.instance
       .collection('transactions')
-      .where('donorId', isEqualTo: uid) // single field = tidak perlu index
+      .where('donorId', isEqualTo: uid)
       .snapshots()
-      .map((snap) => snap.docs
+      .map((s) => s.docs
           .map(TransactionModel.fromFirestore)
           .where((t) =>
-              t.bookId == bookId && // filter client-side
-              t.status == TransactionStatus.pending) // filter client-side
+              t.bookId == bookId && t.status == TransactionStatus.pending)
           .toList());
 });
 
-/// Permintaan yang saya buat (sebagai penerima)
 final myRequestsProvider = StreamProvider<List<TransactionModel>>((ref) {
   final uid = FirebaseAuth.instance.currentUser?.uid;
   if (uid == null) return const Stream.empty();
@@ -53,7 +48,6 @@ final myRequestsProvider = StreamProvider<List<TransactionModel>>((ref) {
       .map((s) => s.docs.map(TransactionModel.fromFirestore).toList());
 });
 
-/// Cek apakah user punya request aktif untuk buku tertentu
 final activeRequestProvider =
     FutureProvider.family<TransactionModel?, String>((ref, bookId) async {
   final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -83,7 +77,6 @@ class TransactionController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  /// Buat permintaan buku
   Future<void> createRequest({
     required String bookId,
     required String bookTitle,
@@ -106,82 +99,100 @@ class TransactionController extends AsyncNotifier<void> {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // Notifikasi ke donor
+      await createNotification(
+        userId: donorId,
+        title: 'Permintaan Buku Baru',
+        body: 'Seseorang meminta bukumu: "$bookTitle"',
+        type: NotifType.requestReceived,
+        bookId: bookId,
+        bookTitle: bookTitle,
+      );
     });
   }
 
-  /// Approve / Reject permintaan (oleh donor)
+  /// Approve / reject — terima TransactionModel lengkap
   Future<void> updateStatus(
-    String transactionId,
-    TransactionStatus newStatus, {
-    String? bookId,
-  }) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final batch = FirebaseFirestore.instance.batch();
-
-      // Update transaction
-      final txRef = FirebaseFirestore.instance
-          .collection('transactions')
-          .doc(transactionId);
-      batch.update(txRef, {
-        'status': newStatus.name,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Kalau disetujui, ubah status buku jadi reserved
-      if (newStatus == TransactionStatus.approved && bookId != null) {
-        final bookRef =
-            FirebaseFirestore.instance.collection('books').doc(bookId);
-        batch.update(bookRef,
-            {'status': 'reserved', 'updatedAt': FieldValue.serverTimestamp()});
-      }
-
-      // Kalau ditolak dan buku reserved, kembalikan ke available
-      if (newStatus == TransactionStatus.rejected && bookId != null) {
-        final bookRef =
-            FirebaseFirestore.instance.collection('books').doc(bookId);
-        batch.update(bookRef,
-            {'status': 'available', 'updatedAt': FieldValue.serverTimestamp()});
-      }
-
-      await batch.commit();
-    });
-  }
-
-  /// Tandai selesai (buku sudah diterima)
-  Future<void> markCompleted(
-    String transactionId,
-    String bookId,
-    String donorId,
-    String receiverId,
+    TransactionModel tx,
+    TransactionStatus newStatus,
   ) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final batch = FirebaseFirestore.instance.batch();
 
       batch.update(
-        FirebaseFirestore.instance
-            .collection('transactions')
-            .doc(transactionId),
+        FirebaseFirestore.instance.collection('transactions').doc(tx.id),
+        {'status': newStatus.name, 'updatedAt': FieldValue.serverTimestamp()},
+      );
+
+      if (newStatus == TransactionStatus.approved) {
+        batch.update(
+          FirebaseFirestore.instance.collection('books').doc(tx.bookId),
+          {'status': 'reserved', 'updatedAt': FieldValue.serverTimestamp()},
+        );
+      }
+
+      if (newStatus == TransactionStatus.rejected) {
+        batch.update(
+          FirebaseFirestore.instance.collection('books').doc(tx.bookId),
+          {'status': 'available', 'updatedAt': FieldValue.serverTimestamp()},
+        );
+      }
+
+      await batch.commit();
+
+      // Notifikasi ke receiver
+      await createNotification(
+        userId: tx.receiverId,
+        title: newStatus == TransactionStatus.approved
+            ? 'Permintaan Disetujui!'
+            : 'Permintaan Ditolak',
+        body: newStatus == TransactionStatus.approved
+            ? 'Selamat! Permintaanmu untuk "${tx.bookTitle}" disetujui.'
+            : 'Maaf, permintaanmu untuk "${tx.bookTitle}" ditolak.',
+        type: newStatus == TransactionStatus.approved
+            ? NotifType.requestApproved
+            : NotifType.requestRejected,
+        bookId: tx.bookId,
+        bookTitle: tx.bookTitle,
+      );
+    });
+  }
+
+  Future<void> markCompleted(TransactionModel tx) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final batch = FirebaseFirestore.instance.batch();
+
+      batch.update(
+        FirebaseFirestore.instance.collection('transactions').doc(tx.id),
         {'status': 'completed', 'updatedAt': FieldValue.serverTimestamp()},
       );
-
       batch.update(
-        FirebaseFirestore.instance.collection('books').doc(bookId),
+        FirebaseFirestore.instance.collection('books').doc(tx.bookId),
         {'status': 'donated', 'updatedAt': FieldValue.serverTimestamp()},
       );
-
-      // Increment counter donor & receiver
       batch.update(
-        FirebaseFirestore.instance.collection('users').doc(donorId),
+        FirebaseFirestore.instance.collection('users').doc(tx.donorId),
         {'donatedCount': FieldValue.increment(1)},
       );
       batch.update(
-        FirebaseFirestore.instance.collection('users').doc(receiverId),
+        FirebaseFirestore.instance.collection('users').doc(tx.receiverId),
         {'receivedCount': FieldValue.increment(1)},
       );
 
       await batch.commit();
+
+      // Notifikasi ke donor
+      await createNotification(
+        userId: tx.donorId,
+        title: 'Buku Sudah Diterima',
+        body: '"${tx.bookTitle}" telah diterima oleh pemohon. Terima kasih!',
+        type: NotifType.bookCompleted,
+        bookId: tx.bookId,
+        bookTitle: tx.bookTitle,
+      );
     });
   }
 }

@@ -9,6 +9,8 @@ import '../../../core/widgets/neo_button.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 
+import 'package:go_router/go_router.dart';
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -134,7 +136,7 @@ class ProfileScreen extends ConsumerWidget {
                       _MenuItem(
                         icon: PhosphorIcons.pencilSimple(),
                         label: 'Edit Profil',
-                        onTap: () {},
+                        onTap: () => context.push('/profile/edit'),
                       ),
                       const SizedBox(height: 10),
                       _MenuItem(
