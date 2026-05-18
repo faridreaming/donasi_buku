@@ -50,9 +50,6 @@ class _BookCardState extends State<BookCard> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Condition strip ────────────────────────────────
-            Container(width: 5, color: _conditionColor),
-
             // ── Book cover (fixed size, clip overflow) ─────────
             SizedBox(
               width: 100,
@@ -68,26 +65,6 @@ class _BookCardState extends State<BookCard> {
                               const _CoverPlaceholder(),
                         )
                       : const _CoverPlaceholder(),
-
-                  // GRATIS badge
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      color: AppColors.primary,
-                      child: Text(
-                        'GRATIS',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.caption.copyWith(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 10,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -184,13 +161,8 @@ class _BookCardState extends State<BookCard> {
             ),
 
             // ── Arrow ──────────────────────────────────────────
-            Container(
+            SizedBox(
               width: 30,
-              decoration: const BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Color(0xFFE8E8E8)),
-                ),
-              ),
               child: Center(
                 child: PhosphorIcon(
                   PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
