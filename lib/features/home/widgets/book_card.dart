@@ -32,137 +32,162 @@ class BookCard extends StatelessWidget {
           ),
           boxShadow: [AppColors.neoShadow],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Photo ─────────────────────────────────────────────
-            SizedBox(
-              width: 100,
-              height: 120,
-              child: book.imageUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: book.imageUrl,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: AppColors.background,
-                        child: const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                      errorWidget: (_, __, ___) => _ImagePlaceholder(),
-                    )
-                  : _ImagePlaceholder(),
-            ),
-
-            // ── Info ──────────────────────────────────────────────
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Category chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.info,
-                        border: Border.all(color: AppColors.black, width: 1.5),
-                      ),
-                      child: Text(
-                        book.category,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.black, fontSize: 10),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-
-                    Text(
-                      book.title,
-                      style: AppTextStyles.bodyBold,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      book.author,
-                      style: AppTextStyles.caption,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-
-                    Row(
-                      children: [
-                        // Condition badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+        child: IntrinsicHeight(
+          // ← baru
+          child: Row(
+            crossAxisAlignment:
+                CrossAxisAlignment.stretch, // ← stretch agar kolom sama tinggi
+            children: [
+              // ── Photo ────────────────────────────────────────
+              SizedBox(
+                width: 96,
+                child: book.imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: book.imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: AppColors.background,
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
-                          decoration: BoxDecoration(
+                        ),
+                        errorWidget: (_, __, ___) => const _ImagePlaceholder(),
+                      )
+                    : const _ImagePlaceholder(),
+              ),
+
+              // ── Info ─────────────────────────────────────────
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Baris badge: category + condition
+                      Row(
+                        children: [
+                          _Badge(
+                            label: book.category,
+                            color: AppColors.info,
+                          ),
+                          const SizedBox(width: 6),
+                          _Badge(
+                            label: AppConstants
+                                .conditionLabels[book.condition.name]!,
                             color: _conditionColor(),
-                            border: Border.all(
-                              color: AppColors.black,
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Text(
-                            AppConstants.conditionLabels[book.condition.name]!,
-                            style: AppTextStyles.caption.copyWith(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.black,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-
-                        // Location
-                        if (book.donorLocation.isNotEmpty) ...[
-                          PhosphorIcon(
-                            PhosphorIcons.mapPin(),
-                            size: 12,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Text(
-                              book.donorLocation,
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 10,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            fontWeight: FontWeight.w700,
                           ),
                         ],
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 6),
+
+                      // Judul
+                      Text(
+                        book.title,
+                        style: AppTextStyles.bodyBold,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+
+                      // Penulis
+                      Text(
+                        book.author,
+                        style: AppTextStyles.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Lokasi
+                      if (book.donorLocation.isNotEmpty)
+                        Row(
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIcons.mapPin(),
+                              size: 12,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                book.donorLocation,
+                                style: AppTextStyles.caption
+                                    .copyWith(fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            // ── Arrow ─────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: PhosphorIcon(
-                PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
-                size: 18,
-                color: AppColors.black,
+              // ── Arrow ─────────────────────────────────────────
+              Container(
+                width: 38,
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(
+                      color: AppColors.black.withValues(alpha: 0.12),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: PhosphorIcon(
+                  PhosphorIcons.arrowRight(PhosphorIconsStyle.bold),
+                  size: 18,
+                  color: AppColors.black,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ── Badge helper ─────────────────────────────────────────────────────────────
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final FontWeight fontWeight;
+
+  const _Badge({
+    required this.label,
+    required this.color,
+    this.fontWeight = FontWeight.w600,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        border: Border.all(color: AppColors.black, width: 1.5),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.caption.copyWith(
+          fontSize: 10,
+          fontWeight: fontWeight,
+          color: AppColors.black,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Image placeholder ─────────────────────────────────────────────────────────
 class _ImagePlaceholder extends StatelessWidget {
+  const _ImagePlaceholder();
+
   @override
   Widget build(BuildContext context) {
     return Container(

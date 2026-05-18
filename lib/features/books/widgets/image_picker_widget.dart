@@ -1,7 +1,10 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 
@@ -15,21 +18,90 @@ class ImagePickerWidget extends StatelessWidget {
     required this.onImagePicked,
   });
 
+  Future<bool> _requestPermission(
+    BuildContext context,
+    ImageSource source,
+  ) async {
+    final permission =
+        source == ImageSource.camera ? Permission.camera : Permission.photos;
+
+    var status = await permission.status;
+
+    if (status.isGranted) return true;
+
+    if (status.isDenied) {
+      status = await permission.request();
+      if (status.isGranted) return true;
+    }
+
+    if (status.isPermanentlyDenied && context.mounted) {
+      _showPermissionDeniedDialog(context, source);
+      return false;
+    }
+
+    return false;
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context, ImageSource source) {
+    final label = source == ImageSource.camera ? 'Kamera' : 'Galeri';
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Izin $label Diperlukan', style: AppTextStyles.heading2),
+        content: Text(
+          'Izin $label ditolak secara permanen. Buka pengaturan aplikasi untuk mengaktifkannya.',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Buka Pengaturan'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showOptions(BuildContext context) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => const _SourceSheet(),
     );
-    if (source == null) return;
+    if (source == null || !context.mounted) return;
 
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: source,
-      imageQuality: 80,
-      maxWidth: 1200,
-    );
-    if (picked != null) onImagePicked(File(picked.path));
+    // Minta permission dulu
+    final granted = await _requestPermission(context, source);
+    if (!granted || !context.mounted) return;
+
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1200,
+      );
+      if (picked != null) {
+        onImagePicked(File(picked.path));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Gagal membuka ${source == ImageSource.camera ? "kamera" : "galeri"}: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -78,12 +150,13 @@ class ImagePickerWidget extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     'Tambah Foto Buku',
-                    style: AppTextStyles.bodyBold
-                        .copyWith(color: AppColors.textMuted),
+                    style: AppTextStyles.bodyBold.copyWith(
+                      color: AppColors.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Ketuk untuk memilih foto',
+                    'Ketuk untuk kamera atau galeri',
                     style: AppTextStyles.caption,
                   ),
                 ],
@@ -109,7 +182,7 @@ class _SourceSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text('Pilih Sumber Foto', style: AppTextStyles.heading2),
           ),
           const Divider(height: 1, color: AppColors.black, thickness: 1),
@@ -146,8 +219,8 @@ class _SourceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => Navigator.pop(context, source),
-      child: Container(
-        width: double.infinity,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
