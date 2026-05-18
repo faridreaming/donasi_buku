@@ -337,9 +337,12 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                 data: (requests) => requests.isEmpty
                     ? Padding(
                         padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Belum ada permintaan untuk buku ini.',
-                          style: AppTextStyles.caption,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Text(
+                            'Belum ada permintaan untuk buku ini.',
+                            style: AppTextStyles.caption,
+                          ),
                         ),
                       )
                     : Column(
