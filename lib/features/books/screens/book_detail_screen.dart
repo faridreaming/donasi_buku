@@ -839,9 +839,8 @@ class _Divider extends StatelessWidget {
 class _Chip extends StatelessWidget {
   final String label;
   final Color bg;
-  final Color? borderColor;
 
-  const _Chip({required this.label, required this.bg, this.borderColor});
+  const _Chip({required this.label, required this.bg});
 
   @override
   Widget build(BuildContext context) {
@@ -850,7 +849,7 @@ class _Chip extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         border: Border.all(
-          color: borderColor ?? AppColors.black,
+          color: AppColors.black,
           width: 1.5,
         ),
       ),

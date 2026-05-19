@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -10,11 +11,13 @@ import '../../../core/constants/app_text_styles.dart';
 
 class ImagePickerWidget extends StatelessWidget {
   final File? imageFile;
+  final String? existingUrl;
   final ValueChanged<File> onImagePicked;
 
   const ImagePickerWidget({
     super.key,
     this.imageFile,
+    this.existingUrl,
     required this.onImagePicked,
   });
 
@@ -106,6 +109,9 @@ class ImagePickerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasNewImage = imageFile != null;
+    final hasOldImage = existingUrl != null && existingUrl!.isNotEmpty;
+
     return GestureDetector(
       onTap: () => _showOptions(context),
       child: Container(
@@ -116,51 +122,86 @@ class ImagePickerWidget extends StatelessWidget {
           border: Border.all(color: AppColors.black, width: 2.5),
           boxShadow: const [AppColors.neoShadow],
         ),
-        child: imageFile != null
+        child: hasNewImage
             ? Stack(
                 fit: StackFit.expand,
                 children: [
                   Image.file(imageFile!, fit: BoxFit.cover),
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        border: Border.all(color: AppColors.black, width: 2),
-                      ),
-                      child: PhosphorIcon(
-                        PhosphorIcons.pencilSimple(PhosphorIconsStyle.bold),
-                        size: 16,
-                        color: AppColors.black,
-                      ),
-                    ),
-                  ),
+                  _EditBadge(),
                 ],
               )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  PhosphorIcon(
-                    PhosphorIcons.camera(PhosphorIconsStyle.bold),
-                    size: 40,
-                    color: AppColors.textMuted,
+            : hasOldImage
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CachedNetworkImage(
+                        imageUrl: existingUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      _EditBadge(),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.camera(PhosphorIconsStyle.bold),
+                        size: 40,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Tambah Foto Buku',
+                        style: AppTextStyles.bodyBold.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Ketuk untuk kamera atau galeri',
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Tambah Foto Buku',
-                    style: AppTextStyles.bodyBold.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ketuk untuk kamera atau galeri',
-                    style: AppTextStyles.caption,
-                  ),
-                ],
+      ),
+    );
+  }
+}
+
+class _EditBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 8,
+      right: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          border: Border.all(color: AppColors.black, width: 2),
+          boxShadow: const [AppColors.neoShadowSmall],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PhosphorIcon(
+              PhosphorIcons.pencilSimple(PhosphorIconsStyle.bold),
+              size: 14,
+              color: AppColors.black,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Ganti Foto',
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -15,6 +15,7 @@ import 'features/profile/screens/profile_screen.dart';
 import 'features/transactions/screens/activity_screen.dart';
 import 'features/notifications/screens/notification_screen.dart';
 import 'features/profile/screens/edit_profile_screen.dart';
+import 'features/books/screens/edit_book_screen.dart';
 
 class _GoRouterRefreshStream extends ChangeNotifier {
   late final StreamSubscription<dynamic> _sub;
@@ -58,14 +59,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // Di dalam routes, sebelum ShellRoute:
       GoRoute(
         path: '/notifications',
         builder: (_, __) => const NotificationsScreen(),
       ),
+
       GoRoute(
         path: '/profile/edit',
         builder: (_, __) => const EditProfileScreen(),
+      ),
+
+      GoRoute(
+        path: '/book/edit/:id',
+        builder: (_, state) => EditBookScreen(
+          bookId: state.pathParameters['id']!,
+        ),
       ),
 
       // Main shell

@@ -10,6 +10,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/neo_button.dart';
 import '../../books/models/book_model.dart';
+import '../../books/controllers/book_controller.dart';
 import '../controllers/transaction_controller.dart';
 import '../models/transaction_model.dart';
 import '../../../core/utils/dialogs.dart';
@@ -157,7 +158,6 @@ class _DonatedTab extends ConsumerWidget {
 
 class _DonatedBookCard extends ConsumerStatefulWidget {
   final BookModel book;
-
   const _DonatedBookCard({required this.book});
 
   @override
@@ -179,9 +179,31 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
         BookStatus.donated => 'Selesai',
       };
 
+  Future<void> _confirmDelete() async {
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Hapus Buku',
+      message:
+          'Buku "${widget.book.title}" akan dihapus beserta semua permintaan yang masuk. Tindakan ini tidak bisa dibatalkan.',
+      confirmLabel: 'Ya, Hapus',
+      isDestructive: true,
+    );
+    if (!ok || !mounted) return;
+
+    await ref.read(bookControllerProvider.notifier).deleteBook(widget.book.id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Buku berhasil dihapus.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final requestsAsync = ref.watch(incomingRequestsProvider(widget.book.id));
+    final isDeleting = ref.watch(bookControllerProvider).isLoading;
+    final canManage = widget.book.status == BookStatus.available;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -192,7 +214,7 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
       ),
       child: Column(
         children: [
-          // ── Book row ─────────────────────────────────────────
+          // ── Book row ──────────────────────────────────────────
           GestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
             behavior: HitTestBehavior.opaque,
@@ -240,6 +262,7 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                         const SizedBox(height: 6),
                         Row(
                           children: [
+                            // Status
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -257,15 +280,15 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                                 style: AppTextStyles.caption.copyWith(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w800,
-                                  color: AppColors.black,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
+                            // Request count badge
                             requestsAsync
                                 .whenData((list) => list.length)
                                 .maybeWhen(
-                                  data: (count) => count > 0
+                                  data: (dataCount) => dataCount > 0
                                       ? Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 8,
@@ -279,7 +302,7 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                                             ),
                                           ),
                                           child: Text(
-                                            '$count permintaan',
+                                            '$dataCount permintaan',
                                             style:
                                                 AppTextStyles.caption.copyWith(
                                               fontSize: 10,
@@ -308,7 +331,89 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
             ),
           ),
 
-          // ── Expanded requests ─────────────────────────────────
+          // ── Edit / Delete actions (hanya jika status available) ──
+          if (canManage)
+            Container(
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE8E8E8), width: 1),
+                ),
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    // Edit
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () =>
+                            context.push('/book/edit/${widget.book.id}'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              PhosphorIcon(
+                                PhosphorIcons.pencilSimple(),
+                                size: 15,
+                                color: AppColors.black,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Edit',
+                                style: AppTextStyles.caption.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(width: 1, color: const Color(0xFFE8E8E8)),
+                    // Hapus
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: isDeleting ? null : _confirmDelete,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: isDeleting
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.danger,
+                                    ),
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    PhosphorIcon(
+                                      PhosphorIcons.trash(),
+                                      size: 15,
+                                      color: AppColors.danger,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Hapus',
+                                      style: AppTextStyles.caption.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.danger,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Expanded: Incoming requests ───────────────────────
           if (_expanded)
             Container(
               decoration: const BoxDecoration(
@@ -329,7 +434,7 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                 ),
                 error: (e, _) => Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Text(e.toString()),
+                  child: Text(e.toString(), style: AppTextStyles.caption),
                 ),
                 data: (requests) => requests.isEmpty
                     ? Padding(
@@ -344,12 +449,10 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                       )
                     : Column(
                         children: requests
-                            .map(
-                              (tx) => _CompactRequestTile(
-                                tx: tx,
-                                book: widget.book,
-                              ),
-                            )
+                            .map((tx) => _CompactRequestTile(
+                                  tx: tx,
+                                  book: widget.book,
+                                ))
                             .toList(),
                       ),
               ),
