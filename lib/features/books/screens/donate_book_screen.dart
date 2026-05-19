@@ -26,6 +26,7 @@ class _DonateBookScreenState extends ConsumerState<DonateBookScreen> {
   final _titleCtrl = TextEditingController();
   final _authorCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _contactCtrl = TextEditingController();
 
   File? _imageFile;
   String _category = 'Fiksi';
@@ -40,6 +41,7 @@ class _DonateBookScreenState extends ConsumerState<DonateBookScreen> {
     _titleCtrl.dispose();
     _authorCtrl.dispose();
     _descCtrl.dispose();
+    _contactCtrl.dispose();
     super.dispose();
   }
 
@@ -82,6 +84,7 @@ class _DonateBookScreenState extends ConsumerState<DonateBookScreen> {
           category: _category,
           condition: _condition,
           description: _descCtrl.text,
+          contactInfo: _contactCtrl.text,
           imageFile: _imageFile!,
           latitude: _lat!,
           longitude: _lng!,
@@ -281,6 +284,46 @@ class _DonateBookScreenState extends ConsumerState<DonateBookScreen> {
                       hint: 'Kondisi detail, edisi, catatan, dll.',
                       textInputAction: TextInputAction.newline,
                       keyboardType: TextInputType.multiline,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── Kontak ────────────────────────────────────────────────
+                    Text('Kontak (opsional)', style: AppTextStyles.label),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.infoSurface,
+                        border: Border.all(
+                          color: AppColors.black,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          PhosphorIcon(
+                            PhosphorIcons.info(),
+                            size: 14,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Masukkan WA, IG, atau kontak lainnya agar penerima bisa menghubungimu.',
+                              style: AppTextStyles.caption.copyWith(
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    NeoTextField(
+                      label: '',
+                      controller: _contactCtrl,
+                      hint: 'Contoh: wa.me/628123… atau @username_ig',
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: 20),
 

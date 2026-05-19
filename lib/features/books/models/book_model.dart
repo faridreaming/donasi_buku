@@ -7,12 +7,13 @@ enum BookStatus { available, reserved, donated }
 class BookModel {
   final String id;
   final String donorId;
-  final String donorName; // ← tambah
+  final String donorName;
   final String title;
   final String author;
   final String category;
   final BookCondition condition;
   final String description;
+  final String contactInfo;
   final String imageUrl;
   final String cloudinaryPublicId;
   final BookStatus status;
@@ -30,6 +31,7 @@ class BookModel {
     required this.category,
     required this.condition,
     required this.description,
+    required this.contactInfo,
     required this.imageUrl,
     required this.cloudinaryPublicId,
     required this.status,
@@ -52,6 +54,7 @@ class BookModel {
       category: d['category'] ?? '',
       condition: BookCondition.values.byName(d['condition'] ?? 'good'),
       description: d['description'] ?? '',
+      contactInfo: d['contactInfo'] ?? '',
       imageUrl: d['imageUrl'] ?? '',
       cloudinaryPublicId: d['cloudinaryPublicId'] ?? '',
       status: BookStatus.values.byName(d['status'] ?? 'available'),
@@ -70,6 +73,7 @@ class BookModel {
         'category': category,
         'condition': condition.name,
         'description': description,
+        'contactInfo': contactInfo,
         'imageUrl': imageUrl,
         'cloudinaryPublicId': cloudinaryPublicId,
         'status': status.name,

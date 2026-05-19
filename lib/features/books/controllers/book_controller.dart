@@ -12,14 +12,13 @@ class BookController extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
-  // ── Create ────────────────────────────────────────────────────────────────
-
   Future<void> donateBook({
     required String title,
     required String author,
     required String category,
     required String condition,
     required String description,
+    required String contactInfo,
     required File imageFile,
     required double latitude,
     required double longitude,
@@ -28,7 +27,6 @@ class BookController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final user = FirebaseAuth.instance.currentUser!;
-
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -48,6 +46,7 @@ class BookController extends AsyncNotifier<void> {
         'category': category,
         'condition': condition,
         'description': description.trim(),
+        'contactInfo': contactInfo.trim(),
         'imageUrl': upload.url,
         'cloudinaryPublicId': upload.publicId,
         'status': 'available',
@@ -60,8 +59,6 @@ class BookController extends AsyncNotifier<void> {
     });
   }
 
-  // ── Update ────────────────────────────────────────────────────────────────
-
   Future<void> updateBook({
     required String bookId,
     required String title,
@@ -69,9 +66,10 @@ class BookController extends AsyncNotifier<void> {
     required String category,
     required String condition,
     required String description,
+    required String contactInfo,
     required String currentImageUrl,
     required String cloudinaryPublicId,
-    File? newImageFile, // null = gambar tidak diganti
+    File? newImageFile,
     required double? latitude,
     required double? longitude,
     required String address,
@@ -81,7 +79,6 @@ class BookController extends AsyncNotifier<void> {
       String imageUrl = currentImageUrl;
       String pubId = cloudinaryPublicId;
 
-      // Upload foto baru jika diganti
       if (newImageFile != null) {
         final upload = await CloudinaryService.uploadImage(newImageFile);
         if (upload == null) throw Exception('Gagal mengupload foto baru.');
@@ -95,6 +92,7 @@ class BookController extends AsyncNotifier<void> {
         'category': category,
         'condition': condition,
         'description': description.trim(),
+        'contactInfo': contactInfo.trim(),
         'imageUrl': imageUrl,
         'cloudinaryPublicId': pubId,
         'donorLocation': address,
@@ -105,25 +103,33 @@ class BookController extends AsyncNotifier<void> {
     });
   }
 
-  // ── Delete ────────────────────────────────────────────────────────────────
-
   Future<void> deleteBook(String bookId) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      // Hapus semua transaksi terkait yang masih pending
+      // ── Ambil semua transaksi buku ini (single field query = tidak butuh index) ──
       final txSnap = await FirebaseFirestore.instance
           .collection('transactions')
           .where('bookId', isEqualTo: bookId)
-          .where('status', isEqualTo: 'pending')
           .get();
 
       final batch = FirebaseFirestore.instance.batch();
+
+      // Update transaksi pending/approved → rejected (jangan delete, biar receiver tahu)
       for (final doc in txSnap.docs) {
-        batch.delete(doc.reference);
+        final status = doc.data()['status'] as String? ?? '';
+        if (status == 'pending' || status == 'approved') {
+          batch.update(doc.reference, {
+            'status': 'rejected',
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+        }
       }
+
+      // Hapus buku
       batch.delete(
         FirebaseFirestore.instance.collection('books').doc(bookId),
       );
+
       await batch.commit();
     });
   }

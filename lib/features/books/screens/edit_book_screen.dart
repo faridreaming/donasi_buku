@@ -40,6 +40,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
   final _titleCtrl = TextEditingController();
   final _authorCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _contactCtrl = TextEditingController();
 
   String _category = 'Fiksi';
   String _condition = 'good';
@@ -57,6 +58,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
     _titleCtrl.dispose();
     _authorCtrl.dispose();
     _descCtrl.dispose();
+    _contactCtrl.dispose();
     super.dispose();
   }
 
@@ -66,6 +68,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
     _titleCtrl.text = book.title;
     _authorCtrl.text = book.author;
     _descCtrl.text = book.description;
+    _contactCtrl.text = book.contactInfo;
     _category = book.category;
     _condition = book.condition.name;
     _currentImageUrl = book.imageUrl;
@@ -110,6 +113,7 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
           category: _category,
           condition: _condition,
           description: _descCtrl.text,
+          contactInfo: _contactCtrl.text,
           currentImageUrl: _currentImageUrl,
           cloudinaryPublicId: _cloudinaryPublicId,
           newImageFile: _newImage,
@@ -172,9 +176,13 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
           if (book == null) {
             return const Center(child: Text('Buku tidak ditemukan.'));
           }
-          // Pre-fill sekali setelah data tersedia
-          WidgetsBinding.instance
-              .addPostFrameCallback((_) => setState(() => _prefill(book)));
+          if (!_initialized) {
+            // Pre-fill hanya sekali setelah data tersedia.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _initialized) return;
+              setState(() => _prefill(book));
+            });
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -324,6 +332,46 @@ class _EditBookScreenState extends ConsumerState<EditBookScreen> {
                     hint: 'Kondisi detail, edisi, catatan, dll.',
                     textInputAction: TextInputAction.newline,
                     keyboardType: TextInputType.multiline,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Kontak ────────────────────────────────────────────────
+                  Text('Kontak (opsional)', style: AppTextStyles.label),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.infoSurface,
+                      border: Border.all(
+                        color: AppColors.black,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(
+                          PhosphorIcons.info(),
+                          size: 14,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Masukkan WA, IG, atau kontak lainnya agar penerima bisa menghubungimu.',
+                            style: AppTextStyles.caption.copyWith(
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  NeoTextField(
+                    label: '',
+                    controller: _contactCtrl,
+                    hint: 'Contoh: wa.me/628123… atau @username_ig',
+                    textInputAction: TextInputAction.done,
                   ),
                   const SizedBox(height: 20),
 

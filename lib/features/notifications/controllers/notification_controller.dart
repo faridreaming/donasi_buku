@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/controllers/auth_controller.dart'; // ← import
 import '../models/notification_model.dart';
 
 final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid; // ← watch
   if (uid == null) return const Stream.empty();
-
   return FirebaseFirestore.instance
       .collection('notifications')
       .where('userId', isEqualTo: uid)
@@ -44,7 +43,6 @@ Future<void> markAllRead(String uid) async {
   await batch.commit();
 }
 
-/// Helper — dipanggil dari TransactionController
 Future<void> createNotification({
   required String userId,
   required String title,

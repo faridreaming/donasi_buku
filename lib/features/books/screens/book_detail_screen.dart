@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -243,6 +244,15 @@ class _BookDetailView extends ConsumerWidget {
                       book.description,
                       style: AppTextStyles.body.copyWith(height: 1.6),
                     ),
+                  ),
+                  const _Divider(),
+                ],
+
+                if (book.contactInfo.isNotEmpty) ...[
+                  _Section(
+                    title: 'Kontak Pendonor',
+                    icon: PhosphorIcons.chatCircle(),
+                    child: _ContactCard(contactInfo: book.contactInfo),
                   ),
                   const _Divider(),
                 ],
@@ -926,6 +936,64 @@ class _DonorCard extends StatelessWidget {
               ),
               Text('donasi', style: AppTextStyles.caption),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContactCard extends StatelessWidget {
+  final String contactInfo;
+
+  const _ContactCard({required this.contactInfo});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: AppColors.black, width: 2),
+        boxShadow: const [AppColors.neoShadowSmall],
+      ),
+      child: Row(
+        children: [
+          PhosphorIcon(
+            PhosphorIcons.chatCircle(PhosphorIconsStyle.fill),
+            size: 24,
+            color: AppColors.black,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              contactInfo,
+              style: AppTextStyles.bodyBold,
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              // ignore: deprecated_member_use
+              Clipboard.setData(ClipboardData(text: contactInfo));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Kontak disalin ke clipboard!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                border: Border.all(color: AppColors.black, width: 2),
+              ),
+              child: PhosphorIcon(
+                PhosphorIcons.copy(),
+                size: 16,
+                color: AppColors.black,
+              ),
+            ),
           ),
         ],
       ),

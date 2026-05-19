@@ -1,18 +1,18 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/controllers/auth_controller.dart'; // ← import authStateProvider
 import '../../notifications/controllers/notification_controller.dart';
 import '../../notifications/models/notification_model.dart';
 import '../models/transaction_model.dart';
 
-// ── Providers ──────────────────────────────────────────────────────────────
+// ── Semua provider pakai ref.watch(authStateProvider) ──────────────────────
+// Otomatis invalidate & rebuild saat ganti akun (fix issue 1)
 
 final myDonatedBooksProvider = StreamProvider((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid; // ← watch
   if (uid == null) return const Stream.empty();
-
   return FirebaseFirestore.instance
       .collection('books')
       .where('donorId', isEqualTo: uid)
@@ -22,9 +22,8 @@ final myDonatedBooksProvider = StreamProvider((ref) {
 
 final incomingRequestsProvider =
     StreamProvider.family<List<TransactionModel>, String>((ref, bookId) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid; // ← watch
   if (uid == null) return const Stream.empty();
-
   return FirebaseFirestore.instance
       .collection('transactions')
       .where('donorId', isEqualTo: uid)
@@ -37,9 +36,8 @@ final incomingRequestsProvider =
 });
 
 final myRequestsProvider = StreamProvider<List<TransactionModel>>((ref) {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid; // ← watch
   if (uid == null) return const Stream.empty();
-
   return FirebaseFirestore.instance
       .collection('transactions')
       .where('receiverId', isEqualTo: uid)
@@ -50,15 +48,13 @@ final myRequestsProvider = StreamProvider<List<TransactionModel>>((ref) {
 
 final activeRequestProvider =
     FutureProvider.family<TransactionModel?, String>((ref, bookId) async {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = ref.watch(authStateProvider).valueOrNull?.uid; // ← watch
   if (uid == null) return null;
-
   final snap = await FirebaseFirestore.instance
       .collection('transactions')
       .where('bookId', isEqualTo: bookId)
       .where('receiverId', isEqualTo: uid)
       .get();
-
   return snap.docs
       .map(TransactionModel.fromFirestore)
       .where((t) =>
@@ -67,7 +63,7 @@ final activeRequestProvider =
       .firstOrNull;
 });
 
-// ── Controller ─────────────────────────────────────────────────────────────
+// ── Controller ──────────────────────────────────────────────────────────────
 
 final transactionControllerProvider =
     AsyncNotifierProvider<TransactionController, void>(
@@ -86,7 +82,8 @@ class TransactionController extends AsyncNotifier<void> {
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final uid = FirebaseAuth.instance.currentUser!.uid;
+      final uid = ref.read(authStateProvider).valueOrNull?.uid;
+      if (uid == null) throw Exception('Tidak terautentikasi.');
 
       await FirebaseFirestore.instance.collection('transactions').add({
         'bookId': bookId,
@@ -100,7 +97,6 @@ class TransactionController extends AsyncNotifier<void> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Notifikasi ke donor
       await createNotification(
         userId: donorId,
         title: 'Permintaan Buku Baru',
@@ -112,7 +108,6 @@ class TransactionController extends AsyncNotifier<void> {
     });
   }
 
-  /// Approve / reject — terima TransactionModel lengkap
   Future<void> updateStatus(
     TransactionModel tx,
     TransactionStatus newStatus,
@@ -132,7 +127,6 @@ class TransactionController extends AsyncNotifier<void> {
           {'status': 'reserved', 'updatedAt': FieldValue.serverTimestamp()},
         );
       }
-
       if (newStatus == TransactionStatus.rejected) {
         batch.update(
           FirebaseFirestore.instance.collection('books').doc(tx.bookId),
@@ -142,7 +136,6 @@ class TransactionController extends AsyncNotifier<void> {
 
       await batch.commit();
 
-      // Notifikasi ke receiver
       await createNotification(
         userId: tx.receiverId,
         title: newStatus == TransactionStatus.approved
@@ -160,35 +153,39 @@ class TransactionController extends AsyncNotifier<void> {
     });
   }
 
+  // Fix issue 3: batch split — transaksi dulu, buku terpisah
   Future<void> markCompleted(TransactionModel tx) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final batch = FirebaseFirestore.instance.batch();
-
-      batch.update(
+      // Step 1: Update transaksi + user counters (receiver bisa update transaksi)
+      final batch1 = FirebaseFirestore.instance.batch();
+      batch1.update(
         FirebaseFirestore.instance.collection('transactions').doc(tx.id),
         {'status': 'completed', 'updatedAt': FieldValue.serverTimestamp()},
       );
-      batch.update(
-        FirebaseFirestore.instance.collection('books').doc(tx.bookId),
-        {'status': 'donated', 'updatedAt': FieldValue.serverTimestamp()},
-      );
-      batch.update(
+      batch1.update(
         FirebaseFirestore.instance.collection('users').doc(tx.donorId),
         {'donatedCount': FieldValue.increment(1)},
       );
-      batch.update(
+      batch1.update(
         FirebaseFirestore.instance.collection('users').doc(tx.receiverId),
         {'receivedCount': FieldValue.increment(1)},
       );
+      await batch1.commit();
 
-      await batch.commit();
+      // Step 2: Update status buku (rules sudah diupdate — allow status='donated')
+      await FirebaseFirestore.instance
+          .collection('books')
+          .doc(tx.bookId)
+          .update({
+        'status': 'donated',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-      // Notifikasi ke donor
       await createNotification(
         userId: tx.donorId,
         title: 'Buku Sudah Diterima',
-        body: '"${tx.bookTitle}" telah diterima oleh pemohon. Terima kasih!',
+        body: '"${tx.bookTitle}" telah diterima. Terima kasih telah berdonasi!',
         type: NotifType.bookCompleted,
         bookId: tx.bookId,
         bookTitle: tx.bookTitle,
