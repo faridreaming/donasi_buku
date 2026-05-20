@@ -3,19 +3,36 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
   final _auth = FirebaseAuth.instance;
-  final _db = FirebaseFirestore.instance;
+  final _db   = FirebaseFirestore.instance;
 
   Stream<User?> get authState => _auth.authStateChanges();
-  User? get currentUser => _auth.currentUser;
+  User? get currentUser       => _auth.currentUser;
 
   Future<void> login({
     required String email,
     required String password,
   }) async {
-    await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
+    // Step 1: Login ke Firebase Auth
+    final cred = await _auth.signInWithEmailAndPassword(
+      email:    email.trim(),
       password: password,
     );
+
+    // Step 2: Verifikasi dokumen Firestore ada
+    final doc = await _db
+        .collection('users')
+        .doc(cred.user!.uid)
+        .get();
+
+    if (!doc.exists) {
+      // Dokumen tidak ada → akun sudah dihapus dari sistem
+      // Langsung signOut sebelum router sempat redirect ke home
+      await _auth.signOut();
+      throw FirebaseAuthException(
+        code:    'user-data-missing',
+        message: 'Data akun tidak ditemukan.',
+      );
+    }
   }
 
   Future<void> register({
@@ -24,30 +41,32 @@ class AuthService {
     required String password,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
+      email:    email.trim(),
       password: password,
     );
 
     await cred.user?.updateDisplayName(name.trim());
 
     await _db.collection('users').doc(cred.user!.uid).set({
-      'uid': cred.user!.uid,
-      'name': name.trim(),
-      'email': email.trim(),
-      'photoUrl': '',
-      'location': '',
+      'uid':          cred.user!.uid,
+      'name':         name.trim(),
+      'email':        email.trim(),
+      'photoUrl':     '',
+      'location':     '',
       'donatedCount': 0,
-      'receivedCount': 0,
-      'createdAt': FieldValue.serverTimestamp(),
+      'receivedCount':0,
+      'createdAt':    FieldValue.serverTimestamp(),
     });
   }
 
   Future<void> signOut() => _auth.signOut();
 
-  /// Terjemahkan Firebase error code ke pesan Bahasa Indonesia.
   static String parseError(Object error) {
     if (error is FirebaseAuthException) {
       switch (error.code) {
+        case 'user-data-missing':
+          return 'Akun ini tidak ditemukan di sistem. '
+              'Kemungkinan telah dihapus, silakan daftar ulang.';
         case 'user-not-found':
         case 'invalid-credential':
           return 'Email atau password salah.';

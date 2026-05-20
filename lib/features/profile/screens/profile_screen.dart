@@ -26,7 +26,11 @@ class ProfileScreen extends ConsumerWidget {
         ),
         error: (e, _) => Center(child: Text(e.toString())),
         data: (user) {
-          if (user == null) return const SizedBox.shrink();
+          if (user == null) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.black),
+            );
+          }
 
           return SingleChildScrollView(
             child: Column(
@@ -238,6 +242,113 @@ class _MenuItem extends StatelessWidget {
               size: 16,
               color: AppColors.textMuted,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InvalidSessionView extends StatelessWidget {
+  final WidgetRef ref;
+
+  const _InvalidSessionView({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // ── Header tetap ada ───────────────────────────
+            Container(
+              width: double.infinity,
+              color: AppColors.primary,
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+              child: Column(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.black,
+                      border: Border.all(
+                        color: AppColors.black,
+                        width: 2.5,
+                      ),
+                      boxShadow: const [AppColors.neoShadow],
+                    ),
+                    child: Center(
+                      child: PhosphorIcon(
+                        PhosphorIcons.userCircleDashed(),
+                        size: 40,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Spacer(),
+
+            // ── Pesan sesi tidak valid ──────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.warnSurface,
+                border: Border.all(color: AppColors.black, width: 2.5),
+                boxShadow: const [AppColors.neoShadow],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.warningCircle(
+                          PhosphorIconsStyle.fill,
+                        ),
+                        size: 22,
+                        color: AppColors.black,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Sesi Tidak Valid',
+                        style: AppTextStyles.heading2,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Data akunmu tidak ditemukan. '
+                    'Kemungkinan akun ini telah dihapus atau '
+                    'terdapat masalah pada data profil.',
+                    style: AppTextStyles.body.copyWith(height: 1.5),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Silakan keluar dan masuk kembali.',
+                    style: AppTextStyles.bodyBold,
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ── Tombol logout ───────────────────────────────
+            NeoButton(
+              label: 'Keluar Sekarang',
+              backgroundColor: AppColors.dangerSurface,
+              onPressed: () async {
+                await ref.read(authControllerProvider.notifier).signOut();
+              },
+            ),
+
+            const Spacer(),
           ],
         ),
       ),

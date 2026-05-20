@@ -3,18 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../models/user_model.dart';
 
-/// Provider global yang otomatis refresh saat auth state berubah.
-/// Pakai ini di semua screen yang butuh data user saat ini.
 final currentUserProvider = StreamProvider<UserModel?>((ref) {
-  // Watch authStateProvider → provider ini ikut invalidate saat logout/login
-  final authState = ref.watch(authStateProvider);
-  final uid = authState.valueOrNull?.uid;
+  final firebaseUser = ref.watch(authStateProvider).valueOrNull;
+  if (firebaseUser == null) return Stream.value(null);
 
-  if (uid == null) return Stream.value(null);
-
+  // Pure read-only stream — tidak ada side effect signOut di sini.
+  // Validasi akun dihapus sudah ditangani oleh:
+  // 1. AuthService.login() → cek doc sebelum login berhasil
+  // 2. app.dart._validateSession() → cek doc saat app dibuka
   return FirebaseFirestore.instance
       .collection('users')
-      .doc(uid)
+      .doc(firebaseUser.uid)
       .snapshots()
       .map((doc) => doc.exists ? UserModel.fromFirestore(doc) : null);
 });

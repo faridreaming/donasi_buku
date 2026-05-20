@@ -17,7 +17,12 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await FcmService.initialize(); // ← init FCM + local notifications
+  // FCM opsional — app tetap jalan meski FCM gagal
+  try {
+    await FcmService.initialize();
+  } catch (e) {
+    debugPrint('[FCM] Skipped: $e');
+  }
 
   timeago.setLocaleMessages('id', timeago.IdMessages());
 
