@@ -226,9 +226,8 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
         children: [
           // ── Book row ──────────────────────────────────────────
           GestureDetector(
-            onTap: canManage
-                ? () => setState(() => _expanded = !_expanded)
-                : null,
+            onTap:
+                canManage ? () => setState(() => _expanded = !_expanded) : null,
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(12),
