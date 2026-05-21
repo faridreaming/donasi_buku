@@ -14,6 +14,16 @@ import '../../books/controllers/book_controller.dart';
 import '../controllers/transaction_controller.dart';
 import '../models/transaction_model.dart';
 import '../../../core/utils/dialogs.dart';
+import '../../profile/models/user_model.dart';
+
+// ── Provider untuk fetch informasi receiver ─────────────────────────────────
+final _receiverInfoProvider =
+    FutureProvider.family<UserModel?, String>((ref, uid) async {
+  final doc =
+      await FirebaseFirestore.instance.collection('users').doc(uid).get();
+  if (!doc.exists) return null;
+  return UserModel.fromFirestore(doc);
+});
 
 class ActivityScreen extends ConsumerStatefulWidget {
   const ActivityScreen({super.key});
@@ -216,7 +226,9 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
         children: [
           // ── Book row ──────────────────────────────────────────
           GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: canManage
+                ? () => setState(() => _expanded = !_expanded)
+                : null,
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -319,13 +331,15 @@ class _DonatedBookCardState extends ConsumerState<_DonatedBookCard> {
                     ),
                   ),
 
-                  PhosphorIcon(
-                    _expanded
-                        ? PhosphorIcons.caretUp(PhosphorIconsStyle.bold)
-                        : PhosphorIcons.caretDown(PhosphorIconsStyle.bold),
-                    size: 16,
-                    color: AppColors.black,
-                  ),
+                  // Tampilkan ikon accordion hanya jika status available
+                  if (canManage)
+                    PhosphorIcon(
+                      _expanded
+                          ? PhosphorIcons.caretUp(PhosphorIconsStyle.bold)
+                          : PhosphorIcons.caretDown(PhosphorIconsStyle.bold),
+                      size: 16,
+                      color: AppColors.black,
+                    ),
                 ],
               ),
             ),
@@ -522,9 +536,18 @@ class _CompactRequestTile extends ConsumerWidget {
                             isDestructive: true,
                           );
                           if (!ok) return;
-                          ref
+                          await ref
                               .read(transactionControllerProvider.notifier)
                               .updateStatus(tx, TransactionStatus.rejected);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Permintaan telah ditolak'),
+                                backgroundColor: AppColors.danger,
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          }
                         },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -560,9 +583,45 @@ class _CompactRequestTile extends ConsumerWidget {
                             confirmLabel: 'Ya, Setujui',
                           );
                           if (!ok) return;
-                          ref
+                          await ref
                               .read(transactionControllerProvider.notifier)
                               .updateStatus(tx, TransactionStatus.approved);
+                          if (context.mounted) {
+                            // Ambil info receiver untuk ditampilkan di snackbar
+                            final receiverAsync = ref.read(
+                              _receiverInfoProvider(tx.receiverId),
+                            );
+                            final receiver = await receiverAsync.when(
+                              data: (user) => user,
+                              loading: () => null,
+                              error: (_, __) => null,
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: receiver != null
+                                    ? Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Disetujui! Informasi penerima:',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text('Nama: ${receiver.name}'),
+                                          Text('Lokasi: ${receiver.location}'),
+                                        ],
+                                      )
+                                    : const Text('Permintaan telah disetujui'),
+                                backgroundColor: AppColors.success,
+                                duration: const Duration(seconds: 5),
+                              ),
+                            );
+                          }
                         },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),

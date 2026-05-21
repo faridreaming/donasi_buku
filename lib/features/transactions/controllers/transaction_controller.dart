@@ -85,6 +85,25 @@ class TransactionController extends AsyncNotifier<void> {
       final uid = ref.read(authStateProvider).valueOrNull?.uid;
       if (uid == null) throw Exception('Tidak terautentikasi.');
 
+      // ── Validasi: Cek apakah sudah ada permintaan aktif untuk buku ini ─
+      final existingRequest = await FirebaseFirestore.instance
+          .collection('transactions')
+          .where('bookId', isEqualTo: bookId)
+          .where('receiverId', isEqualTo: uid)
+          .get();
+
+      // Cek apakah ada request dengan status pending atau approved
+      final hasActive = existingRequest.docs.any((doc) {
+        final status = doc['status'] as String?;
+        return status == 'pending' || status == 'approved';
+      });
+
+      if (hasActive) {
+        throw Exception(
+          'Kamu sudah meminta buku ini sebelumnya. Tunggu balasan dari pendonor.',
+        );
+      }
+
       await FirebaseFirestore.instance.collection('transactions').add({
         'bookId': bookId,
         'bookTitle': bookTitle,
